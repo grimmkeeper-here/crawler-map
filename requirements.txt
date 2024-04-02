@@ -1,0 +1,6 @@
+black == 24.3.0
+isort == 5.13.2
+flake8 == 7.0.0
+
+selenium == 4.19.0
+pydantic == 2.6.4
