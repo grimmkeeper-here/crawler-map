@@ -27,14 +27,28 @@ class ParserRecord(BaseModel):
 
 
 def is_phone_number(phone: str) -> bool:
+    """
+    Check is phone number
+    Args:
+        phone: str
+    Return:
+        bool - is phone or not
+    """
+    # Check if have special str like "Open" or "Closes"
     if "Open" in phone or "Closes" in phone:
         return False
+    # Regex detect phone number
     regex = r"[+\d][+ \d]*[\d]"
     matches = re.findall(regex, phone, re.MULTILINE)
     return len(matches) > 0
 
 
 def export_json_file(data: List[ParserRecord]) -> None:
+    """
+    Export to json data
+    Args:
+        data: list
+    """
     with open(FILE_JSON, "w", encoding="utf8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
@@ -42,7 +56,11 @@ def export_json_file(data: List[ParserRecord]) -> None:
 class WebParser:
     def scroll_page(self, driver: webdriver.Chrome) -> WebElement:
         """
-        Find element here
+        Find scroll element to trigger scroll to end page
+        Args:
+            driver: webdriver Chrome
+        Return:
+            WebElement: scroll menu include li data after scroll
         """
         # Local var
         scroll_xpath = '//div[contains(@aria-label, "Results for")]'
@@ -82,6 +100,13 @@ class WebParser:
     def crawl_record(
         self, parent_ele: WebElement
     ) -> Generator[WebElement, None, None]:  # noqa: E501
+        """
+        Crawl record li
+        Args:
+            parent_ele: WebElement - scroll menu have info after scroll
+        Return:
+            WebElement - element in menu scroll
+        """
         # Local var
         ele_xpath = "div"
 
@@ -89,10 +114,16 @@ class WebParser:
             yield ele
 
     def parse_record_info(self, parent_ele: WebElement) -> ParserRecord:
-        result = ParserRecord(name=None, type=None, address=None, phone=None)
+        """
+        Parse record info from ele
+        Args:
+            parent_ele: WebElement - ele info from menu scroll
+        Return:
+            ParserRecord
+        """
         # Local var
+        result = ParserRecord(name=None, type=None, address=None, phone=None)
         ele_xpath = 'div[1]/div[2]/div[4]/div[1]/div[1]/div[1]/div[contains(@class, "fontBodyMedium")]'  # noqa: E501
-
         name_xpath = 'div[1]/div[contains(@class, "fontHeadlineSmall")]'
         type_xpath = "div[4]/div[1]/span[1]"
         addr_xpath = "div[4]/div[1]/span[2]/span[2]"
@@ -122,17 +153,20 @@ class WebParser:
             except NoSuchElementException:
                 pass
 
+            # Parse phone case 1
             phone: str = ""
             try:
                 phone = ele.find_element(By.XPATH, phone_xpath_1).text
             except NoSuchElementException:
                 pass
 
+            # If phone still empty or not available, try case 2
             if len(phone) == 0 or not is_phone_number(phone):
                 try:
                     phone = ele.find_element(By.XPATH, phone_xpath_2).text
                 except NoSuchElementException:
                     pass
+
             if len(phone) != 0 and is_phone_number(phone):
                 result.phone = phone
 
@@ -149,6 +183,7 @@ def main():
     # Scroll all page
     parent_ele = web_parser.scroll_page(driver=driver)
 
+    # Parse list record info from menu scroll
     list_result: list = []
     for record in web_parser.crawl_record(parent_ele):
         if not record.get_attribute("class"):
@@ -156,7 +191,10 @@ def main():
             if parsing_record.name:
                 list_result.append(parsing_record.__dict__)
 
+    # Export to json data file
     export_json_file(data=list_result)
+
+    # Close driver
     driver.close()
 
 
